@@ -3,11 +3,13 @@
 #COPY target/maven-web-application*.war /usr/local/tomcat/webapps
 #FROM tomcat:10-jdk21
 
+FROM tomcat:10-jdk21
+
 # Remove default Tomcat webapps
 RUN rm -rf /usr/local/tomcat/webapps/*
 
 # Copy .war into Tomcat
-COPY target/maven-web-application*.war /usr/local/tomcat/webapps/ROOT.war
+COPY *.war /usr/local/tomcat/webapps/ROOT.war
 
 EXPOSE 8080
 
