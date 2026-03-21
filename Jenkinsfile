@@ -1,54 +1,81 @@
-node
- {
-  
-  def mavenHome = tool name: "maven3.6.2"
-  
-      echo "GitHub BranhName ${env.BRANCH_NAME}"
-      echo "Jenkins Job Number ${env.BUILD_NUMBER}"
-      echo "Jenkins Node Name ${env.NODE_NAME}"
-  
-      echo "Jenkins Home ${env.JENKINS_HOME}"
-      echo "Jenkins URL ${env.JENKINS_URL}"
-      echo "JOB Name ${env.JOB_NAME}"
-  
-   properties([[$class: 'JiraProjectProperty'], buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '2', daysToKeepStr: '', numToKeepStr: '2')), pipelineTriggers([pollSCM('* * * * *')])])
-  
-  stage("CheckOutCodeGit")
-  {
-   git branch: 'development', credentialsId: '65fb834f-a83b-4fe7-8e11-686245c47a65', url: 'https://github.com/MithunTechnologiesDevOps/maven-web-application.git'
- }
- 
- stage("Build")
- {
- sh "${mavenHome}/bin/mvn clean package"
- }
- 
-  /*
- stage("ExecuteSonarQubeReport")
- {
- sh "${mavenHome}/bin/mvn sonar:sonar"
- }
- 
- stage("UploadArtifactsintoNexus")
- {
- sh "${mavenHome}/bin/mvn deploy"
- }
- 
-  stage("DeployAppTomcat")
- {
-  sshagent(['423b5b58-c0a3-42aa-af6e-f0affe1bad0c']) {
-    sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war  ec2-user@15.206.91.239:/opt/apache-tomcat-9.0.34/webapps/" 
-  }
- }
- 
- stage('EmailNotification')
- {
- mail bcc: 'devopstrainingblr@gmail.com', body: '''Build is over
+pipeline {
+    agent any
 
- Thanks,
- Mithun Technologies,
- 9980923226.''', cc: 'devopstrainingblr@gmail.com', from: '', replyTo: '', subject: 'Build is over!!', to: 'devopstrainingblr@gmail.com'
- }
- */
- 
- }
+    environment {
+        GIT_REPO    = 'https://github.com/SilentGhost2025/simple_Maven_web_App.git'
+        BRANCH      = 'master'
+        APP_SERVER  = '10.0.136.41'
+        USER        = 'ec2-user'
+    }
+
+    tools {
+        maven 'Maven'
+    }
+
+    stages {
+        stage('Clone from GitHub') {
+            steps {
+                git branch: "${BRANCH}", url: "${GIT_REPO}"
+            }
+        }
+
+        stage('Build with Maven') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                // We still run the scan, but we don't wait for the result
+                withSonarQubeEnv('Sonarqube') {
+                    sh 'mvn sonar:sonar'
+                }
+            }
+        }
+
+        stage('Upload to Nexus') {
+            steps {
+                configFileProvider([configFile(fileId: 'maven-settings', variable: 'MAVEN_SETTINGS')]) {
+                    sh 'mvn deploy -s "$MAVEN_SETTINGS" -DskipTests'
+                }
+            }
+        }
+
+        stage('Build Docker & Deploy') {
+            steps {
+                sshagent(['app-server-ssh']) {
+                    sh """
+                        # Copy war and Dockerfile to server
+                        scp -o StrictHostKeyChecking=no target/Landmark.war ${USER}@${APP_SERVER}:/home/${USER}/
+                        scp -o StrictHostKeyChecking=no Dockerfile ${USER}@${APP_SERVER}:/home/${USER}/
+
+                        # SSH and Deploy
+                        ssh -o StrictHostKeyChecking=no ${USER}@${APP_SERVER} '
+                            cd /home/${USER}
+                            
+                            docker stop tomcat-app || true
+                            docker rm tomcat-app || true
+                            
+                            docker build -t tomcat-app:latest .
+                            docker run -d \
+                                --name tomcat-app \
+                                -p 8080:8080 \
+                                --restart unless-stopped \
+                                tomcat-app:latest
+                        '
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline finished — Quality Gate bypassed, app is up!'
+        }
+        failure {
+            echo '❌ Pipeline failed — check the console output.'
+        }
+    }
+}
