@@ -476,27 +476,12 @@ ssh -i "NewKEY.pem" -L 8080:<app-server-ip>:8080 ubuntu@<bastion-ip> -N
 
 > ✅ **Golden rule:** Credentials only ever exist in the Jenkins Credentials Store. They are injected at runtime and never touch the codebase, `pom.xml`, `Dockerfile`, or version control at any point.
 
----
-
-## 📸 Screenshots
-
-<!-- Add your pipeline screenshots below -->
-
-| Stage | Screenshot |
-|-------|-----------|
-| Jenkins Pipeline View | *(add screenshot)* |
-| SonarQube Analysis Results | *(add screenshot)* |
-| Nexus Artifact Upload | *(add screenshot)* |
-| Docker Container Running | *(add screenshot)* |
-| Deployed Application | *(add screenshot)* |
-
----
 
 ## 👤 Author
 
 **SilentGhost2025**
 - GitHub: [@SilentGhost2025](https://github.com/SilentGhost2025)
-- LinkedIn: *(add your LinkedIn)*
+- LinkedIn: linkedin.com/in/salvation-samuel-1a62052a1
 
 ---
 
